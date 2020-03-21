@@ -86,7 +86,7 @@ void CANSend(uint8_t address, uint8_t(&send_data)[S]){
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
-
+bool is_can_set_data = false;
 /* USER CODE END 0 */
 
 /**
@@ -271,7 +271,16 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 void HAL_SYSTICK_Callback() {
+	static uint8_t interval_time = 0;
 
+	if(interval_time >= 10) {
+		if(is_can_set_data) {
+			CANSend(0x01, can_send_data);
+			is_can_set_data = false;
+		}
+		interval_time = 0;
+	}
+	interval_time++;
 }
 
 void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan) {
@@ -283,7 +292,10 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan) {
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 	if(huart == &huart1) {
-		CANSend(0x01, uart_receive_data);
+		for(uint8_t i = 0; i < sizeof(uart_receive_data); ++i) {
+			can_send_data[i] = uart_receive_data[i];
+		}
+		is_can_set_data = true;
 	}
 	HAL_UART_Receive_IT(&huart1, uart_receive_data, sizeof(uart_receive_data));
 }
